@@ -17,6 +17,7 @@
             @j.Nombre
             @(j.Jugado ? "Ya jugado" : "Pendiente")
             <input type="checkbox" checked="@j.Jugado" @onclick="() => CambiarJugado(j)" />
+            <button @onclick="() => EliminarJuego(j)">Eliminar</button>
         </li>
     }
 </ul>
@@ -53,5 +54,11 @@
     private void CambiarJugado(Juego juego)
     {
         juego.Jugado = !juego.Jugado;
+    }
+
+    private async Task EliminarJuego(Juego juego)
+    {
+        await ServicioControlador.EliminarJuego(juego);
+        juegos = await ServicioControlador.ObtenerJuegos(); // refresca la lista
     }
 }
