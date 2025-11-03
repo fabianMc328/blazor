@@ -32,5 +32,9 @@ namespace blazor.Components.Servicios
         {
             await _servicioJuegos.EliminarJuego(juego);
         }
+        public async Task ActualizarJuego(Juego juego)
+        {
+            await _servicioJuegos.ActualizarJuego(juego);
+        }
     }
 }

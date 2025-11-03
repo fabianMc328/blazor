@@ -59,5 +59,26 @@ namespace blazor.Components.Data
 
             juegos.RemoveAt(juego.Identificador-1);
         }
+        public async Task ActualizarJuego(Juego juego)
+        {
+            string ruta = "mibase.db";
+            using var conexion = new SqliteConnection($"DataSource={ruta}");
+            await conexion.OpenAsync();
+
+            var comando = conexion.CreateCommand();
+            comando.CommandText = "UPDATE JUEGOS SET NOMBRE = $NOMBRE, JUGADO = $JUGADO WHERE IDENTIFICADOR = $IDENTIFICADOR";
+            comando.Parameters.AddWithValue("$NOMBRE", juego.Nombre);
+            comando.Parameters.AddWithValue("$JUGADO", juego.Jugado ? 1 : 0);
+            comando.Parameters.AddWithValue("$IDENTIFICADOR", juego.Identificador);
+            await comando.ExecuteNonQueryAsync();
+
+            var index = juegos.FindIndex(x => x.Identificador == juego.Identificador);
+            if (index >= 0)
+            {
+                juegos[index].Nombre = juego.Nombre;
+                juegos[index].Jugado = juego.Jugado;
+            }
+        }
     }
 }
+

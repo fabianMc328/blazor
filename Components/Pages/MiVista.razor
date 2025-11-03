@@ -4,6 +4,9 @@
 @rendermode InteractiveServer
 
 <h3>Juegos</h3>
+<div>
+    <input placeholder="Buscar por nombre..." @bind="busqueda" @bind:event="oninput" />
+</div>
 
 <div>
     <input type="checkbox" @bind="mostrarSoloPendientes" />
@@ -14,10 +17,19 @@
     @foreach (var j in JuegosFiltrados)
     {
         <li>
+            @if (IdEditar == j.Identificador)
+            {
+                <input @bind="editNombre" />
+                <button @onclick="() => GuardarEdicion(j)">Guardar</button>
+                <button @onclick="CancelarEdicion">Cancelar</button>
+            }
+            else
             @j.Nombre
-            @(j.Jugado ? "Ya jugado" : "Pendiente")
+            @(j.Jugado ? "Ya jugado" : "  "+"[Pendiente]")
             <input type="checkbox" checked="@j.Jugado" @onclick="() => CambiarJugado(j)" />
             <button @onclick="() => EliminarJuego(j)">Eliminar</button>
+            <button @onclick="() => IniciarEdicion(j)">Editar</button>
+
         </li>
     }
 </ul>
@@ -31,9 +43,15 @@
     private List<Juego> juegos = new();
     private Juego newJuego = new();
     private bool mostrarSoloPendientes = false;
+    private int? IdEditar = null;
+    private string editNombre = string.Empty;
+    private string busqueda = string.Empty;
 
     private IEnumerable<Juego> JuegosFiltrados =>
-        mostrarSoloPendientes ? juegos.Where(j => !j.Jugado) : juegos;
+        juegos.Where(j =>
+            (!mostrarSoloPendientes || !j.Jugado)
+            && (string.IsNullOrWhiteSpace(busqueda) || (j.Nombre?.Contains(busqueda, StringComparison.OrdinalIgnoreCase) == true))
+        );
 
     protected override async Task OnInitializedAsync()
     {
@@ -59,6 +77,28 @@
     private async Task EliminarJuego(Juego juego)
     {
         await ServicioControlador.EliminarJuego(juego);
-        juegos = await ServicioControlador.ObtenerJuegos(); // refresca la lista
+        juegos = await ServicioControlador.ObtenerJuegos(); //actualiza la lista
+    }
+    private void IniciarEdicion(Juego juego)
+    {
+        IdEditar = juego.Identificador;
+        editNombre = juego.Nombre;
+    }
+    private void CancelarEdicion()
+    {
+        IdEditar = null;
+        editNombre = string.Empty;
+    }
+
+    private async Task GuardarEdicion(Juego juego)
+    {
+        if (string.IsNullOrWhiteSpace(editNombre))
+            return;
+
+        juego.Nombre = editNombre;
+        await ServicioControlador.ActualizarJuego(juego);
+        juegos = await ServicioControlador.ObtenerJuegos();
+        IdEditar = null;
+        editNombre = string.Empty;
     }
 }
