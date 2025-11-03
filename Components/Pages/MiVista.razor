@@ -1,11 +1,14 @@
 ﻿@page "/MiVista"
 @using blazor.Components.Data
 @inject blazor.Components.Servicios.ServicioControlador ServicioControlador
+@inject IJSRuntime JS
 @rendermode InteractiveServer
 
 <h3>Juegos</h3>
+
 <div>
-    <input placeholder="Buscar por nombre..." @bind="busqueda" @bind:event="oninput" />
+   
+    <input placeholder="Buscar por nombre..." @bind="Busqueda" @bind:event="oninput" />
 </div>
 
 <div>
@@ -24,12 +27,13 @@
                 <button @onclick="CancelarEdicion">Cancelar</button>
             }
             else
-            @j.Nombre
-            @(j.Jugado ? "Ya jugado" : "  "+"[Pendiente]")
-            <input type="checkbox" checked="@j.Jugado" @onclick="() => CambiarJugado(j)" />
-            <button @onclick="() => EliminarJuego(j)">Eliminar</button>
-            <button @onclick="() => IniciarEdicion(j)">Editar</button>
-
+            {
+                @j.Nombre
+                @(j.Jugado ? "  " + "[Ya jugado]" : "  " + "[Pendiente]")
+                <input type="checkbox" checked="@j.Jugado" @onclick="() => CambiarJugado(j)" />
+                <button @onclick="() => EliminarJuego(j)">Eliminar</button>
+                <button @onclick="() => IniciarEdicion(j)">Editar</button>
+            }
         </li>
     }
 </ul>
@@ -46,16 +50,65 @@
     private int? IdEditar = null;
     private string editNombre = string.Empty;
     private string busqueda = string.Empty;
+    private const string KeyBusqueda = "MiVista_UltimaBusqueda";
 
+
+    private string Busqueda
+    {
+        get => busqueda;
+        set
+        {
+            if (busqueda == value) return;
+            busqueda = value;
+            _ = GuardarBusquedaAsync(busqueda); 
+        }
+    }
+
+    
     private IEnumerable<Juego> JuegosFiltrados =>
         juegos.Where(j =>
             (!mostrarSoloPendientes || !j.Jugado)
-            && (string.IsNullOrWhiteSpace(busqueda) || (j.Nombre?.Contains(busqueda, StringComparison.OrdinalIgnoreCase) == true))
+            && (string.IsNullOrWhiteSpace(Busqueda) || (j.Nombre?.Contains(Busqueda, StringComparison.OrdinalIgnoreCase) == true))
         );
 
     protected override async Task OnInitializedAsync()
     {
+       
         juegos = await ServicioControlador.ObtenerJuegos();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        try
+        {
+           
+            var valor = await JS.InvokeAsync<string>("localStorage.getItem", KeyBusqueda);
+            if (!string.IsNullOrEmpty(valor))
+            {
+              
+                busqueda = valor;
+                StateHasChanged(); 
+            }
+        }
+        catch
+        {
+         
+        }
+    }
+
+  
+    private async Task GuardarBusquedaAsync(string valor)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("localStorage.setItem", KeyBusqueda, valor ?? string.Empty);
+        }
+        catch
+        {
+           
+        }
     }
 
     private async Task AgregarJuego()
@@ -77,13 +130,15 @@
     private async Task EliminarJuego(Juego juego)
     {
         await ServicioControlador.EliminarJuego(juego);
-        juegos = await ServicioControlador.ObtenerJuegos(); //actualiza la lista
+        juegos = await ServicioControlador.ObtenerJuegos(); // actualiza la lista
     }
+
     private void IniciarEdicion(Juego juego)
     {
         IdEditar = juego.Identificador;
         editNombre = juego.Nombre;
     }
+
     private void CancelarEdicion()
     {
         IdEditar = null;
